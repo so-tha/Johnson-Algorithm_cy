@@ -19,7 +19,7 @@ class PriorityQueue {
 
 function limparDestacarArestas(cy) {
     cy.edges().style({
-        'line-color': '#ccc', // Cor padrão
+        'line-color': '#ccc', 
         'target-arrow-color': '#ccc',
         'width': 3
     });
@@ -123,15 +123,15 @@ class Grafo {
     }
        
     visualizarGrafo(cy) {
-        // Adiciona nós
+  
         const nodes = Array.from(new Set(this.edges.flatMap(edge => [edge.data.source, edge.data.target])))
             .map(id => ({ data: { id } }));
         cy.add(nodes);
     
-        // Adiciona arestas com IDs baseados em suas propriedades
+
         const edgesWithIds = this.edges.map(edge => ({
             data: {
-                id: `${edge.data.source}-${edge.data.target}`, // ID gerado a partir dos nós de origem e destino
+                id: `${edge.data.source}-${edge.data.target}`, 
                 source: edge.data.source,
                 target: edge.data.target,
                 weight: edge.data.weight
@@ -144,13 +144,13 @@ class Grafo {
     }
     
     destacarCaminho(cy, caminho, cor) {
-        console.log('Caminho a ser destacado:', caminho); // Para depuração
 
-        limparDestacarArestas(cy); // Limpa estilos anteriores
+
+        limparDestacarArestas(cy); 
 
         caminho.forEach(edge => {
             const edgeId = `${edge.source}-${edge.target}`;
-            console.log(`Destacando aresta com ID ${edgeId}`); // Para depuração
+            console.log(`Destacando aresta com ID ${edgeId}`); 
             cy.edges(`#${edgeId}`).style({
                 'line-color': cor,
                 'target-arrow-color': cor,
@@ -228,6 +228,6 @@ document.addEventListener('DOMContentLoaded', function () {
         source: distanciasJohnson[startNode].previous[node] !== null ? distanciasJohnson[startNode].previous[node] : startNode, 
         target: node
     })), 'green');
-    
+
     atualizarResultados(caminhoBF, caminhoDijkstra, caminhoJohnson);
 });
