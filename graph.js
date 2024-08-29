@@ -1,3 +1,30 @@
+class PriorityQueue {
+    constructor() {
+        this.queue = [];
+    }
+
+    enqueue(element, priority) {
+        this.queue.push({ element, priority });
+        this.queue.sort((a, b) => a.priority - b.priority);
+    }
+
+    dequeue() {
+        return this.queue.shift().element;
+    }
+
+    isEmpty() {
+        return this.queue.length === 0;
+    }
+}
+
+function limparDestacarArestas(cy) {
+    cy.edges().style({
+        'line-color': '#ccc', // Cor padrão
+        'target-arrow-color': '#ccc',
+        'width': 3
+    });
+}
+
 class Grafo {
     constructor(vertices) {
         this.V = vertices;
@@ -10,94 +37,135 @@ class Grafo {
         this.edges.push({ data: { source: `${u}`, target: `${v}`, weight: w } });
     }
 
-    bellmanFord(src) {
+    bellmanFord(start) {
         const dist = Array(this.V).fill(Infinity);
-        dist[src] = 0;
-    
+        const prev = Array(this.V).fill(null);
+        dist[start] = 0;
+
         for (let i = 0; i < this.V - 1; i++) {
             for (const [u, v, w] of this.grafo) {
                 if (dist[u] !== Infinity && dist[u] + w < dist[v]) {
                     dist[v] = dist[u] + w;
-                }
-            }
-        }
-    
-    
-        return dist;
-    }
-    
-
-    dijkstra(src, novaGrafo) {
-        const dist = Array(this.V).fill(Infinity);
-        dist[src] = 0;
-        const pq = new MinHeap();
-        pq.insert([0, src]);
-
-        while (!pq.isEmpty()) {
-            const [d, u] = pq.extractMin();
-
-            if (d > dist[u]) continue;
-
-            for (const [v, w] of novaGrafo[u]) {
-                if (dist[u] + w < dist[v]) {
-                    dist[v] = dist[u] + w;
-                    pq.insert([dist[v], v]);
+                    prev[v] = u;
                 }
             }
         }
 
-        return dist;
+        return { dist, prev };
     }
 
+    dijkstra(start) {
+        const distances = {};
+        const previous = {};
+        const priorityQueue = new PriorityQueue();
+    
+        for (let node = 0; node < this.V; node++) {
+            const nodeStr = `${node}`;
+            distances[nodeStr] = nodeStr === start ? 0 : Infinity;
+            priorityQueue.enqueue(nodeStr, distances[nodeStr]);
+            previous[nodeStr] = null;
+        }
+    
+        while (!priorityQueue.isEmpty()) {
+            const currentNode = priorityQueue.dequeue();
+    
+            for (const [neighbor, weight] of this.getAdjacencyList(currentNode)) {
+                const distance = distances[currentNode] + weight;
+    
+                if (distance < distances[neighbor]) {
+                    distances[neighbor] = distance;
+                    previous[neighbor] = currentNode;
+                    priorityQueue.enqueue(neighbor, distance);
+                }
+            }
+        }
+    
+        return { distances, previous };
+    }
+    
     johnson() {
         this.adicionarAresta(this.V, 0, 0);
-        const h = this.bellmanFord(this.V);
+        const { dist: h, prev } = this.bellmanFord(this.V);
         this.grafo.pop();
-
+    
         const novaGrafo = Array.from({ length: this.V }, () => []);
-
+    
         for (const [u, v, w] of this.grafo) {
             if (u < this.V && v < this.V) {
                 novaGrafo[u].push([v, w + h[u] - h[v]]);
             }
         }
-
+    
         const distancias = [];
         for (let u = 0; u < this.V; u++) {
-            distancias.push(this.dijkstra(u, novaGrafo));
+            distancias.push(this.dijkstra(u));
         }
-
+    
         return distancias;
     }
+    
+    getAdjacencyList(node) {
+        const adjacencyList = [];
+        for (const [u, v, w] of this.grafo) {
+            if (u === node) {
+                adjacencyList.push([v, w]);
+            }
+        }
+        return adjacencyList;
+    }
 
+    getPath(prev, start, end) {
+        const path = [];
+        for (let at = end; at != null; at = prev[at]) {
+            path.push(at);
+        }
+        return path.reverse();
+    }
+       
     visualizarGrafo(cy) {
+        // Adiciona nós
         const nodes = Array.from(new Set(this.edges.flatMap(edge => [edge.data.source, edge.data.target])))
             .map(id => ({ data: { id } }));
         cy.add(nodes);
-
-        console.log("Nodes:", nodes);
-
-        this.edges = this.edges.filter(edge => {
-            const sourceExists = cy.getElementById(edge.data.source).length > 0;
-            const targetExists = cy.getElementById(edge.data.target).length > 0;
-            return sourceExists && targetExists;
-        });
-        console.log("Filtered Edges:", this.edges);
-        cy.add(this.edges);
+    
+        // Adiciona arestas com IDs baseados em suas propriedades
+        const edgesWithIds = this.edges.map(edge => ({
+            data: {
+                id: `${edge.data.source}-${edge.data.target}`, // ID gerado a partir dos nós de origem e destino
+                source: edge.data.source,
+                target: edge.data.target,
+                weight: edge.data.weight
+            }
+        }));
+        
+        cy.add(edgesWithIds);
+    
         cy.layout({ name: 'grid', rows: 2 }).run();
     }
-
+    
     destacarCaminho(cy, caminho, cor) {
+        console.log('Caminho a ser destacado:', caminho); // Para depuração
+
+        limparDestacarArestas(cy); // Limpa estilos anteriores
+
         caminho.forEach(edge => {
-            cy.edges(`[source = "${edge.source}"][target = "${edge.target}"]`).style({
+            const edgeId = `${edge.source}-${edge.target}`;
+            console.log(`Destacando aresta com ID ${edgeId}`); // Para depuração
+            cy.edges(`#${edgeId}`).style({
                 'line-color': cor,
                 'target-arrow-color': cor,
                 'width': 6
             });
         });
+        
     }
 }
 
+function atualizarResultados(caminhoBF, caminhoDijkstra, caminhoJohnson) {
+    document.getElementById('bellman-ford').textContent = `Caminho de Bellman-Ford: ${caminhoBF.join(' -> ')}`;
+    document.getElementById('dijkstra').textContent = `Caminho de Dijkstra: ${caminhoDijkstra.join(' -> ')}`;
+    document.getElementById('johnson').textContent = `Caminho de Johnson: ${caminhoJohnson.join(' -> ')}`;
+}
 
 document.addEventListener('DOMContentLoaded', function () {
     const cy = cytoscape({
@@ -132,30 +200,34 @@ document.addEventListener('DOMContentLoaded', function () {
     grafo.adicionarAresta(1, 3, 2);
     grafo.adicionarAresta(2, 3, 5);
 
-
     grafo.visualizarGrafo(cy);
 
+    const startNode = '0';
+    const endNode = '3';
 
-    const caminhoBellmanFord = [
-        { source: '0', target: '2' },
-        { source: '2', target: '1' },
-        { source: '1', target: '3' }
-    ];
+    // Bellman-Ford
+    const { dist: distBF, prev: prevBF } = grafo.bellmanFord(startNode);
+    const caminhoBF = grafo.getPath(prevBF, startNode, endNode);
+    grafo.destacarCaminho(cy, caminhoBF.map((node, index) => ({
+        source: prevBF[node] !== null ? prevBF[node] : startNode, 
+        target: node
+    })), 'red');
 
-    const caminhoDijkstra = [
-        { source: '0', target: '2' },
-        { source: '2', target: '3' }
-    ];
+    // Dijkstra
+    const { distances: distDijkstra, previous: prevDijkstra } = grafo.dijkstra(startNode);
+    const caminhoDijkstra = grafo.getPath(prevDijkstra, startNode, endNode);
+    grafo.destacarCaminho(cy, caminhoDijkstra.map((node, index) => ({
+        source: prevDijkstra[node] !== null ? prevDijkstra[node] : startNode, 
+        target: node
+    })), 'blue');
 
-    const caminhoJohnson = [
-        { source: '0', target: '2' },
-        { source: '2', target: '1' },
-        { source: '1', target: '3' }
-    ];
-
-
-    grafo.destacarCaminho(cy, caminhoBellmanFord, 'red');
-    grafo.destacarCaminho(cy, caminhoDijkstra, 'blue');
-    grafo.destacarCaminho(cy, caminhoJohnson, 'green');
+    // Johnson
+    const distanciasJohnson = grafo.johnson();
+    const caminhoJohnson = grafo.getPath(distanciasJohnson[startNode].previous, startNode, endNode);
+    grafo.destacarCaminho(cy, caminhoJohnson.map((node, index) => ({
+        source: distanciasJohnson[startNode].previous[node] !== null ? distanciasJohnson[startNode].previous[node] : startNode, 
+        target: node
+    })), 'green');
+    
+    atualizarResultados(caminhoBF, caminhoDijkstra, caminhoJohnson);
 });
-

@@ -5,3 +5,9 @@
     border: 20px solid black;
     margin-top: 20px;
 }
+#results {
+    margin-top: 20px;
+}
+.path {
+    margin-bottom: 10px;
+}
